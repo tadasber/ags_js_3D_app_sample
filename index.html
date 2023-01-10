@@ -1,0 +1,261 @@
+<!-- https://opencity.vplanas.lt/server/rest/services/Hosted/Vilnius_mesh_2019/SceneServer/layers/0 -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>
+            Mesh redagavimas
+        </title>
+        <!--scenos widgetu stilius-->
+        <link rel="stylesheet" href="https://js.arcgis.com/4.25/esri/themes/light/main.css">
+
+        <style>
+            html,
+            body,
+            #viewDiv {
+              padding: 0;
+              margin: 0;
+              height: 100%;
+              width: 100%;
+              z-index: 1;
+            }
+            #irankiai{
+                padding: 1%;
+                background-color: transparent;
+                text-align: center;
+            }
+            #irankiu_dez{
+                z-index: 2;
+                position: absolute;
+                top: 75%;
+                right: 25%;
+                bottom: 0;
+                left: 25%;
+                align-items: center;
+            }
+            .flex-container{
+                overflow: auto;
+                align-items: center;
+                display: inline-flex;
+                width: 100%;
+                height: 200px;
+                background-color: transparent;
+                border-radius: 3px;
+            }
+            .flex-container > div{
+                text-align: center;
+                width: 100%;
+                height: 50%;
+                background-color: transparent;
+                overflow: auto;
+            }
+            .flex-container .button-container{
+                text-align: center;
+                margin: 1%;
+                width: 50%;
+                height: 65%;
+                background-color: rgba(16, 165, 235, 0.534);
+                overflow: auto;
+                border-radius: 10px;
+                position: relative;
+            }
+            div.button-container{
+                border-style: dashed;
+                position: relative;
+            }
+            .flex-container .button-container .commandText{
+                text-shadow: 10px;
+                color: rgb(8, 8, 3);
+                background-color: rgba(255, 228, 196, 0.473);
+            }
+            .flex-container .button-container .myButtons{
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                left: 0;
+                top: 70%;
+            }
+            #reset{
+                position: absolute;
+                left: 40%;
+                width: 20%;
+                height: 20%;
+                background-color: rgba(116, 31, 31, 0.479);
+                text-align: center;
+                border-radius: 10px;
+            }
+
+          </style>
+          <h1 style="text-align: center; font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;">Visualize and model new development</h1>
+        <script src="https://js.arcgis.com/4.25/"></script>
+        <script>
+            require(["esri/views/SceneView", "esri/WebScene","esri/layers/GraphicsLayer","esri/widgets/Sketch/SketchViewModel","esri/layers/support/SceneModification","esri/layers/support/SceneModifications"], (
+              SceneView,
+              WebScene,
+              GraphicsLayer,
+              SketchViewModel,
+              SceneModification,
+              SceneModifications
+            ) => {
+                //Sukuriame instanca scenos su mesh duomenimis
+                const scene = new WebScene({
+                    portalItem: {
+                        id: "b93a19ff7493471ea3248aeccfdca969"
+                    } 
+                });
+
+                //Sukuriame scenos rodymo objekto instanca
+                const view = new SceneView({
+                    map: scene,
+                    container: "viewDiv",
+                });
+                
+                //sukuriame grafini sluoksni, kuris naudojamas poligonui brezti ir pridedame i scena
+                const graphicsLayer = new GraphicsLayer();
+                view.map.add(graphicsLayer);
+                //apibreziame breziamo poligono isvaizda
+                const SketchSymbol = {
+                    type: "polygon-3d",
+                    symbolLayers: [{
+                        type: "fill",
+                        material:{
+                            color:[150,150,150,0.5]
+                        },
+                        outline:{
+                            size: "4px",
+                            color: [75,75,75,1]
+                        }
+                    }]
+                };
+                //apibreziame nubrezto poligono isvaizda
+                const modificationSymbol = {
+                    type: "polygon-3d",
+                    symbolLayers: [{
+                        type: "line",
+                        material: {
+                            color: [0,0,0,0]
+                        },
+                        size: "5px"
+                    }]
+                };
+                //apsibreziame SketchViewModel instanca
+                const sketchViewModel = new SketchViewModel({
+                    layer: graphicsLayer,
+                    view: view,
+                    poligonSymbol: SketchSymbol,
+                    updateOnGraphicClick: false,
+                    defaultCreateOptions: {
+                        mode: "click"
+                    }
+                });
+                //pridedame paspaudimo eventa draw mygtukui
+                const createModificationButton = document.getElementById("drawPolygon");
+
+                createModificationButton.addEventListener("click", (event) => {
+                    sketchViewModel.create("polygon");
+                });
+                //deklaruojame integratedMesh sluoksnio kintamaji
+                let imLayer;
+                view.when(() => {
+                    imLayer = scene.layers.find((layer) => {
+                        return layer.type === "integrated-mesh";
+                    });
+                });
+                //atnaujiname mesh su modifikacijomis, igaliname z
+                sketchViewModel.on("create", (event) => {
+                    if (event.state === "complete"){
+                        sketchViewModel.update(event.graphic, {
+                            enableZ: true
+                        });
+                        updateIntegratedMesh();
+                    }
+                
+                });
+                //klausome ir istriname brezini, bei atnaujiname mesh
+                const resetButton = document.getElementById("resetButton");
+                resetButton.addEventListener("click",(event) => {
+                    graphicsLayer.removeAll();
+                    graphicsLayer3D.removeAll();
+                    imLayer.modifications.removeAll();                    
+                });
+                //sketchViewModel.on("delete", updateIntegratedMesh);
+                
+                //mesh atnaujinimo funkcija
+                function updateIntegratedMesh() {
+                    let modifications = new SceneModifications(
+                        graphicsLayer.graphics.toArray().map((graphic) => {
+                            return new SceneModification({
+                                    geometry: graphic.geometry,
+                                    type: "replace"
+                                });
+                            })
+                        );
+                    imLayer.modifications = modifications;
+
+                    };
+                //deklaruojame 3D modelio instancus, sukuriame grafini sluoksni ir sukonfiguruojame mygtukus
+                const graphicsLayer3D = new GraphicsLayer({
+                    elevationInfo: { mode: "on-the-ground" }
+                });
+                view.map.add(graphicsLayer3D);
+                const palapine = document.getElementById("insert3DModel");
+                const sketchVM3D = new SketchViewModel({
+                    layer: graphicsLayer3D,
+                    view: view
+                
+                });
+                palapine.addEventListener("click", () => {
+                    sketchVM3D.pointSymbol = {
+                        type: "point-3d",
+                            symbolLayers: [
+                            {
+                                type: "object",
+                                resource: {
+                                    href: "https://developers.arcgis.com/javascript/latest/sample-code/import-gltf/live/tent.glb"
+                                }
+                            }
+                            ]
+                    };
+                sketchVM3D.create("point");
+                });
+
+            });
+        </script>
+
+        
+
+    </head>
+    <body>
+        
+        <div id="viewDiv" class="esri-widget">
+            
+        </div>
+        <div id="irankiu_dez">
+            <div id="irankiai" class="flex-container">
+                <div class="button-container"><p class="commandText">Step 1:<br> Flatten mesh by drawing a polygon</p>
+                    <div class="myButtons">
+                        <button id="drawPolygon">Draw</button>
+                    </div>
+                    </div>
+                <div class="button-container">
+                    <p class="commandText">Alternative 1:<br> Insert 3D model</p>
+                    <div class="myButtons">
+                        <button id="insert3DModel">Insert</button>
+                    </div>
+                </div>
+                <div class="button-container">
+                    <p class="commandText">Alternative 2:<br> Draw 3D model</p>
+                    <div class="myButtons">
+                        <button id="draw3D">Draw 3D</button>
+                    </div>
+                </div>
+                
+            </div>
+            <div id="reset">
+                <button id="resetButton" style="position: absolute; top: 25%; right: 25%">Reset</button>
+            </div>
+        </div>
+        
+
+    </body>
+</html>

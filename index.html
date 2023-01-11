@@ -1,4 +1,3 @@
-<!-- https://opencity.vplanas.lt/server/rest/services/Hosted/Vilnius_mesh_2019/SceneServer/layers/0 -->
 <!DOCTYPE html>
 <html>
     <head>
@@ -13,6 +12,8 @@
             html,
             body,
             #viewDiv {
+              position: absolute;
+              overflow: auto;
               padding: 0;
               margin: 0;
               height: 100%;
@@ -34,6 +35,8 @@
                 align-items: center;
             }
             .flex-container{
+                position: relative;
+                bottom: 5%;
                 overflow: auto;
                 align-items: center;
                 display: inline-flex;
@@ -69,33 +72,40 @@
                 background-color: rgba(255, 228, 196, 0.473);
             }
             .flex-container .button-container .myButtons{
+                margin: 0;
                 position: absolute;
-                bottom: 0;
-                right: 0;
-                left: 0;
-                top: 70%;
+                top: 75%;
+                left: 50%;
+                -ms-transform: translate(-50%, -50%);
+                transform: translate(-50%, -50%);
             }
             #reset{
-                position: absolute;
-                left: 40%;
-                width: 20%;
-                height: 20%;
-                background-color: rgba(116, 31, 31, 0.479);
-                text-align: center;
+                margin: auto;
+                position: relative;
+                z-index: 3;
+                top: 85%;
+            }
+            #title{
+                position: relative;
+                background-color: rgba(16, 165, 235, 0.534);
+                z-index: 2;
+                margin: auto;
+                width: 60%;
                 border-radius: 10px;
             }
 
           </style>
-          <h1 style="text-align: center; font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;">Visualize and model new development</h1>
+          
         <script src="https://js.arcgis.com/4.25/"></script>
         <script>
-            require(["esri/views/SceneView", "esri/WebScene","esri/layers/GraphicsLayer","esri/widgets/Sketch/SketchViewModel","esri/layers/support/SceneModification","esri/layers/support/SceneModifications"], (
-              SceneView,
-              WebScene,
-              GraphicsLayer,
-              SketchViewModel,
-              SceneModification,
-              SceneModifications
+            require(["esri/Map","esri/views/SceneView", "esri/WebScene","esri/layers/GraphicsLayer","esri/widgets/Sketch/SketchViewModel","esri/layers/support/SceneModification","esri/layers/support/SceneModifications"], (
+                Map,
+                SceneView,
+                WebScene,
+                GraphicsLayer,
+                SketchViewModel,
+                SceneModification,
+                SceneModifications
             ) => {
                 //Sukuriame instanca scenos su mesh duomenimis
                 const scene = new WebScene({
@@ -112,7 +122,9 @@
                 
                 //sukuriame grafini sluoksni, kuris naudojamas poligonui brezti ir pridedame i scena
                 const graphicsLayer = new GraphicsLayer();
+                
                 view.map.add(graphicsLayer);
+                
                 //apibreziame breziamo poligono isvaizda
                 const SketchSymbol = {
                     type: "polygon-3d",
@@ -142,7 +154,7 @@
                 const sketchViewModel = new SketchViewModel({
                     layer: graphicsLayer,
                     view: view,
-                    poligonSymbol: SketchSymbol,
+                    polygonSymbol: SketchSymbol,
                     updateOnGraphicClick: false,
                     defaultCreateOptions: {
                         mode: "click"
@@ -176,6 +188,7 @@
                 resetButton.addEventListener("click",(event) => {
                     graphicsLayer.removeAll();
                     graphicsLayer3D.removeAll();
+                    sketch3D.removeAll();
                     imLayer.modifications.removeAll();                    
                 });
                 //sketchViewModel.on("delete", updateIntegratedMesh);
@@ -219,6 +232,78 @@
                 sketchVM3D.create("point");
                 });
 
+                //Sketch 3D dalis. Deklaruojame nauja sketchViewModel, apibreziame parametrus, prijungiame mygtuka
+                const sketch3D = new GraphicsLayer({
+                    elevationInfo: { mode: "on-the-ground" }
+                });
+                
+                view.map.add(sketch3D);
+                
+                const sketch = document.getElementById("draw3D");
+                
+                var aukstis = 10;
+
+                function enterAukstis(){
+                    aukstis_string = prompt("Enter building height in meters");
+                    aukstis = parseInt(aukstis_string);
+                };
+                
+
+                var extrudedPolygon = {
+                    type: "polygon-3d",
+                    symbolLayers: [
+                    {
+                        type: "extrude",
+                        size: aukstis,
+                        material: {
+                        color: [255, 255, 255, 0.8]
+                        },
+                        edges: {
+                        type: "solid",
+                        size: "3px",
+                        color: [82, 82, 122, 0.9]
+                        }
+                    }
+                    ]
+                };
+
+                const sketchViewModel3D = new SketchViewModel({
+                    layer: sketch3D,
+                    view: view,
+                    polygonSymbol: extrudedPolygon,
+                defaultCreateOptions: { hasZ: false }
+                });
+                
+                sketch.addEventListener("click", (event) => {
+                    enterAukstis();
+                    var extrudedPolygon = {
+                        type: "polygon-3d",
+                        symbolLayers: [
+                        {
+                            type: "extrude",
+                            size: aukstis,
+                            material: {
+                            color: [255, 255, 255, 0.8]
+                            },
+                            edges: {
+                            type: "solid",
+                            size: "3px",
+                            color: [82, 82, 122, 0.9]
+                            }
+                        }
+                        ]
+                    };
+
+                    const sketchViewModel3D = new SketchViewModel({
+                        layer: sketch3D,
+                        view: view,
+                        polygonSymbol: extrudedPolygon,
+                    defaultCreateOptions: { hasZ: false }
+                    });
+                    sketchViewModel3D.create("polygon");
+                });
+
+
             });
         </script>
 
@@ -228,11 +313,14 @@
     <body>
         
         <div id="viewDiv" class="esri-widget">
-            
+          
+        </div>
+        <div id="title">
+        <h1 style="text-align: center; font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif; color: rgba(255, 228, 196, 0.75);">Visualize and model new development</h1>
         </div>
         <div id="irankiu_dez">
             <div id="irankiai" class="flex-container">
-                <div class="button-container"><p class="commandText">Step 1:<br> Flatten mesh by drawing a polygon</p>
+                <div class="button-container"><p class="commandText">Flatten mesh by drawing a polygon</p>
                     <div class="myButtons">
                         <button id="drawPolygon">Draw</button>
                     </div>
@@ -244,18 +332,17 @@
                     </div>
                 </div>
                 <div class="button-container">
-                    <p class="commandText">Alternative 2:<br> Draw 3D model</p>
+                    <p class="commandText">Alternative 2:<br> Sketch 3D model</p>
                     <div class="myButtons">
-                        <button id="draw3D">Draw 3D</button>
+                        <button id="draw3D">Sketch 3D</button>
                     </div>
                 </div>
                 
             </div>
-            <div id="reset">
-                <button id="resetButton" style="position: absolute; top: 25%; right: 25%">Reset</button>
-            </div>
         </div>
-        
+        <div id="reset">
+            <button id="resetButton" style="position: relative; margin: auto; left: 95%; color: red;">Reset</button>
+        </div>
 
     </body>
 </html>
